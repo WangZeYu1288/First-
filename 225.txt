@@ -1,3 +1,130 @@
-53245345354345345354345
-6151
-516265655
+// Mandatory UF Includes
+#include <uf.h>
+#include <uf_object_types.h>
+
+// Internal Includes
+#include <NXOpen/ListingWindow.hxx>
+#include <NXOpen/NXMessageBox.hxx>
+#include <NXOpen/UI.hxx>
+
+// Internal+External Includes
+#include <NXOpen/Annotations.hxx>
+#include <NXOpen/Assemblies_Component.hxx>
+#include <NXOpen/Assemblies_ComponentAssembly.hxx>
+#include <NXOpen/Body.hxx>
+#include <NXOpen/BodyCollection.hxx>
+#include <NXOpen/Face.hxx>
+#include <NXOpen/Line.hxx>
+#include <NXOpen/NXException.hxx>
+#include <NXOpen/NXObject.hxx>
+#include <NXOpen/Part.hxx>
+#include <NXOpen/PartCollection.hxx>
+#include <NXOpen/Session.hxx>
+#include <uf_modl_primitives.h>
+
+// Std C++ Includes
+#include <iostream>
+#include <sstream>
+
+using namespace NXOpen;
+using std::string;
+using std::exception;
+using std::stringstream;
+using std::endl;
+using std::cout;
+using std::cerr;
+
+class MyClass
+{
+public:
+    static Session *theSession;
+    static UI *theUI;
+
+    MyClass();
+    ~MyClass();
+    void do_it();
+    void print(const NXString &);
+    void print(const string &);
+    void print(const char*);
+
+private:
+    BasePart *workPart, *displayPart;
+    NXMessageBox *mb;
+    ListingWindow *lw;
+    LogFile *lf;
+};
+
+Session *(MyClass::theSession) = NULL;
+UI *(MyClass::theUI) = NULL;
+
+MyClass::MyClass()
+{
+    MyClass::theSession = NXOpen::Session::GetSession();
+    MyClass::theUI = UI::GetUI();
+    mb = theUI->NXMessageBox();
+    lw = theSession->ListingWindow();
+    lf = theSession->LogFile();
+    workPart = theSession->Parts()->BaseWork();
+    displayPart = theSession->Parts()->BaseDisplay();
+}
+
+MyClass::~MyClass() {}
+
+void MyClass::print(const NXString &msg)
+{
+    if(! lw->IsOpen() ) lw->Open();
+    lw->WriteLine(msg);
+}
+void MyClass::print(const string &msg)
+{
+    if(! lw->IsOpen() ) lw->Open();
+    lw->WriteLine(msg);
+}
+void MyClass::print(const char * msg)
+{
+    if(! lw->IsOpen() ) lw->Open();
+    lw->WriteLine(msg);
+}
+
+void MyClass::do_it()
+{
+    UF_initialize();
+    double origin[3] = { 0.0, 0.0, 0.0 };
+    char* edge_len[3] = { "40", "60", "80" };
+    tag_t blk_obj_id = NULL_TAG;
+    UF_MODL_create_block1(UF_NULLSIGN, origin, edge_len, &blk_obj_id);
+    UF_terminate();
+}
+
+// 入口函数
+extern "C" DllExport void ufusr( char *parm, int *returnCode, int rlen )
+{
+    try
+    {
+        MyClass *theMyClass;
+        theMyClass = new MyClass();
+        theMyClass->do_it();
+        delete theMyClass;
+    }
+    catch (const NXException& e1)
+    {
+        UI::GetUI()->NXMessageBox()->Show("NXException",
+            NXOpen::NXMessageBox::DialogTypeError, e1.Message());
+    }
+    catch (const exception& e2)
+    {
+        UI::GetUI()->NXMessageBox()->Show("Exception",
+            NXOpen::NXMessageBox::DialogTypeError, e2.what());
+    }
+    catch (...)
+    {
+        UI::GetUI()->NXMessageBox()->Show("Exception",
+            NXOpen::NXMessageBox::DialogTypeError, "Unknown Exception.");
+    }
+}
+
+// 卸载处理
+extern "C" DllExport int ufusr_ask_unload()
+{
+    return (int)Session::LibraryUnloadOptionImmediately;
+}
